@@ -121,7 +121,7 @@ end
 %loading = uicontrol('Style', 'text', 'String', 'Loading ... ', 'Position', [.5, .5, 0, 0]); 
 %loading = annotation('textbox', [.5, .5, .1, .1], 'String', 'Loading ...');
 
-%log_rate = 4.58; %%% make RFC
+log_rate = 4.58; %%% make RFC
 [all_data, total_days] = load_SUM(item_selected, log_rate);
 
 % delete 'Loading ...' message
@@ -140,14 +140,14 @@ while end_day <= start_day || end_day > total_days || (end_day - floor(end_day) 
 end
 
 % % get time and data vectors
-% samples_per_day = (1 / log_rate) * 60 * 24;
-% start_index = floor(samples_per_day * start_day);
-% end_index = floor(samples_per_day * end_day) - 1;
-% data = all_data(start_index : end_index);
-% n = length(data);
-% time = ones(1, n)*start_day + (1:n)/n * (end_day - start_day - 1/samples_per_day);
+samples_per_day = (1 / log_rate) * 60 * 24;
+start_index = floor(samples_per_day * start_day);
+end_index = floor(samples_per_day * end_day) - 1;
+data = all_data(start_index : end_index);
+n = length(data);
+time = ones(1, n)*start_day + (1:n)/n * (end_day - start_day - 1/samples_per_day);
 
-[time, data] = all
+%[time, data] = all
 
 plot(time, data);
 title(strcat('File: ', item_selected, '     Start Day:', num2str(start_day), '  End day: ' , num2str(end_day)));
