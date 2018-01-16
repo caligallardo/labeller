@@ -63,9 +63,7 @@ evalin('base', 'clear');
 
 % initialize modules as off
 set(handles.listbox1,'Enable','on'); % label new
-set(handles.pushbutton1,'Enable','off'); % label new
 set(handles.pushbutton2,'Enable', 'off'); % undo
-set(handles.pushbutton4,'Enable', 'off'); % add event
 set(handles.pushbutton5,'Enable', 'off'); % finish set
 set(handles.slider2, 'Enable', 'off');
 set(handles.slider3, 'Enable', 'off');
@@ -117,16 +115,16 @@ if isActive()
     end
 end
 
-[all_data, period] = load_SUM_labeller(item_selected, 4.6);
-total_days = length(all_data) * 5 / 60 / 24;
+[all_data, period] = load_SUM_labeller(item_selected, 4.8);
+total_days = length(all_data) * period / 60 / 24;
 
 % use dialog boxes to get day range, then load file
-start_day = str2double(inputdlg('Input start day'));
+start_day = str2double(inputdlg(strcat('Input start day between 1 and ', num2str(floor(total_days)-1))));
 while start_day < 1 || start_day > total_days || (start_day - floor(start_day) ~= 0)
-    waitfor(msgbox(strcat('Start index must be an integer in the range [1,', num2str(floor(total_days)), ']')))
+    waitfor(msgbox(strcat('Start index must be an integer in the range [1, ', num2str(floor(total_days)-1), ']')))
     start_day = str2double(inputdlg('Input start day'));
 end
-end_day = str2double(inputdlg('Input end day'));
+end_day = str2double(inputdlg(strcat('Input end day between ', num2str(start_day+1), ' and ', num2str(floor(total_days)-1))));
 while end_day <= start_day || end_day > total_days || (end_day - floor(end_day) ~= 0)
     waitfor(msgbox(strcat('End index must be an integer in the range (', num2str(start_day), ', ', num2str(floor(total_days)), ']')))
     end_day = str2double(inputdlg('Input end day'));
@@ -134,11 +132,12 @@ end
 
 % % get time and data vectors
 samples_per_day = (1 / period) * 60 * 24;
+
 start_index = floor(samples_per_day * (start_day - 1) + 1);
-end_index = floor(samples_per_day * end_day);
+end_index = floor(samples_per_day * end_day) - 1;
+
 data = all_data(start_index : end_index);
-n = length(data);
-time = ones(1, n)*start_day + (1:n)/n * (end_day - start_day - 1/samples_per_day);
+time = linspace(start_day, end_day+1, length(data));
 
 plot(time, data);
 title(strcat('File: ', item_selected, '     Start Day:', num2str(start_day), '  End day: ' , num2str(end_day)));
@@ -155,9 +154,7 @@ set(handles.slider2, 'Value', .5); % centered
 dayRange = [start_day, end_day];
 
 % initialize module
-set(handles.pushbutton1,'Enable','on'); % label new
 set(handles.pushbutton2,'Enable', 'off'); % undo
-set(handles.pushbutton4,'Enable', 'off'); % add event
 set(handles.pushbutton5,'Enable', 'off'); % finish set
 set(handles.slider2, 'Enable', 'on');
 set(handles.slider3, 'Enable', 'on');
@@ -171,7 +168,9 @@ assignin('base', 'dayRange', dayRange);
 assignin('base', 'center', center);
 assignin('base', 'filename', item_selected);
 assignin('base', 'events', []);
-
+% Initialize cooking event array
+assignin('base', 'cooking_events', zeros(floor(length(data)/3), 3));
+assignin('base', 'number_of_events', 1);
 %set(gcf, 'WindowButtonMotionFcn', @(object, eventdata) mouseMove(object, eventdata, handles))
 
 % Hints: contents = cellstr(get(hObject,'String')) returns listbox1 contents as cell array
@@ -246,32 +245,6 @@ set(handles.axes1, 'XLim', [center - numDays/2/scale_fac, center + numDays/2/sca
 
 % Hints: get(hObject,'Value') returns position of slider
 %        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
-
-
-% pushbutton1: create new cooking event
-% --- Executes on button press in pushbutton1.
-function pushbutton1_Callback(hObject, eventdata, handles)
-% hObject    handle to pushbutton1 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% if ~isActive()
-%     return
-% end
-
-active = evalin('base', 'active');
-
-% start new event
-if active == 0;
-    active = 1;
-    current_event = [-1, -1, -1]; % initialize
-end
-
-% update
-assignin('base', 'active', active);
-assignin('base', 'current_event', current_event);
-assignin('base', 'cel', [0, 0, 0, 0, 0]);
-
 
 
 % --- Executes during object creation, after setting all properties.
@@ -354,7 +327,6 @@ assignin('base', 'active', active);
 assignin('base', 'events', events);
 assignin('base', 'current_event', [-1, -1, -1]);
 set(hObject, 'Enable', 'off');
-set(handles.pushbutton1, 'Enable', 'on'); % enable creat new
 % end
         
 

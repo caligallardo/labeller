@@ -9,18 +9,16 @@ active = evalin('base', 'active');
 
 
     data = evalin('base', 'data');
+    events = evalin('base', 'events');
     n = evalin('base', 'number_of_events');
     events = evalin('base', 'cooking_events');
 
     if inBounds(handles)
         C = get(gca, 'CurrentPoint')
-        YLims = get(gca, 'ylim');
+        YLims = get(gca, 'ylim')
         x = C(1, 1)
-        index = day_to_index(x)
-        adj_x = index_to_day(day_to_index(x)) % time value of nearest data point
-        if n == 1
-            last = 5;
-        end
+        index = day_to_index(x);
+        adj_x = index_to_day(day_to_index(x)); % time value of nearest data point
         
         % first line
         if active == 0 && index > last - 10
@@ -31,9 +29,8 @@ active = evalin('base', 'active');
 
         % second line
         elseif active == 1 && index > events(n+1, 1)
-            light_index = events(n,1)
-            lighting_time = index_to_day(light_index)
-            line(linspace(lighting_time, adj_x, index - light_index + 1), data(light_index:index), 'Color', [1, .5, 0], 'LineWidth', 2);
+            lighting_start = index_to_day(events();
+            line(linspace(lighting_start, adj_x, index - current_event(1) + 1), data(current_event(1):index), 'Color', [1, .5, 0], 'LineWidth', 2);
             line([adj_x, adj_x], [YLims(1), YLims(2)], 'Color', 'yellow');
             current_event(2) = index;
 
@@ -45,10 +42,6 @@ active = evalin('base', 'active');
             cel(5) = line([x, x], [0, 1], 'Color', 'blue');
             set(handles.pushbutton4,'Enable', 'on');
         end
-        
-        assignin('base', 'active', active);
-        assignin('base', 'number_of_events', n);
-        assignin('base', 'cooking_events', events);
 
     end
 end

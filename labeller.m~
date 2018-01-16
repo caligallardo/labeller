@@ -58,6 +58,9 @@ handles.output = hObject;
 % Update handles structure
 guidata(hObject, handles);
 
+% Initialize cooking event array
+assignin('base', 'cooking_events', zeros(florrlength(data)/3
+
 set(gcf,'WindowButtonDownFcn',@(object, eventdata) myButtonDownFcn(object, eventdata, handles))
 evalin('base', 'clear');
 
@@ -117,38 +120,29 @@ if isActive()
     end
 end
 
-% add 'Loading ...' message
-%loading = uicontrol('Style', 'text', 'String', 'Loading ... ', 'Position', [.5, .5, 0, 0]); 
-%loading = annotation('textbox', [.5, .5, .1, .1], 'String', 'Loading ...');
-
-%log_rate = 4.58; %%% make RFC
-[all_data, period] = load_SUM(item_selected, log_rate);
-total_days = period 
-
-% delete 'Loading ...' message
-%delete(loading);
+[all_data, period] = load_SUM_labeller(item_selected, 4.8);
+total_days = length(all_data) * period / 60 / 24;
 
 % use dialog boxes to get day range, then load file
-start_day = str2double(inputdlg('Input start day'));
+start_day = str2double(inputdlg(strcat('Input start day between 1 and ', num2str(floor(total_days)-1))));
 while start_day < 1 || start_day > total_days || (start_day - floor(start_day) ~= 0)
-    waitfor(msgbox(strcat('Start index must be an integer in the range [1,', num2str(floor(total_days)), ']')))
+    waitfor(msgbox(strcat('Start index must be an integer in the range [1, ', num2str(floor(total_days)-1), ']')))
     start_day = str2double(inputdlg('Input start day'));
 end
-end_day = str2double(inputdlg('Input end day'));
+end_day = str2double(inputdlg(strcat('Input end day between ', num2str(start_day+1), ' and ', num2str(floor(total_days)-1))));
 while end_day <= start_day || end_day > total_days || (end_day - floor(end_day) ~= 0)
     waitfor(msgbox(strcat('End index must be an integer in the range (', num2str(start_day), ', ', num2str(floor(total_days)), ']')))
     end_day = str2double(inputdlg('Input end day'));
 end
 
 % % get time and data vectors
-samples_per_day = (1 / log_rate) * 60 * 24;
-start_index = floor(samples_per_day * start_day);
-end_index = floor(samples_per_day * end_day) - 1;
-data = all_data(start_index : end_index);
-n = length(data);
-time = ones(1, n)*start_day + (1:n)/n * (end_day - start_day - 1/samples_per_day);
+samples_per_day = (1 / period) * 60 * 24;
 
-%[time, data] = all
+start_index = floor(samples_per_day * (start_day - 1) + 1);
+end_index = floor(samples_per_day * end_day) - 1;
+
+data = all_data(start_index : end_index);
+time = linspace(start_day, end_day+1, length(data));
 
 plot(time, data);
 title(strcat('File: ', item_selected, '     Start Day:', num2str(start_day), '  End day: ' , num2str(end_day)));
