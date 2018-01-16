@@ -133,25 +133,29 @@ end
 % % get time and data vectors
 samples_per_day = (1 / period) * 60 * 24;
 
+start_time = start_day - 1;
+end_time = end_day;
+
 start_index = floor(samples_per_day * (start_day - 1) + 1);
 end_index = floor(samples_per_day * end_day) - 1;
 
 data = all_data(start_index : end_index);
-time = linspace(start_day, end_day+1, length(data));
+time = linspace(start_time, end_time, length(data));
 
+ylim auto;
 plot(time, data);
 title(strcat('File: ', item_selected, '     Start Day:', num2str(start_day), '  End day: ' , num2str(end_day)));
 
-set(handles.axes1, 'XLim', [start_day, end_day])
+set(handles.axes1, 'XLim', [start_time, end_time])
 %set(handles.axes1, 'YLim', [0, 1])
 
 % initialize slider values
-center = start_day + (time(length(time)) - start_day)/2;
+center = start_time + (time(length(time)) - start_time)/2;
 % zoom
 set(handles.slider3, 'Value', 0); % all the way zoomed out
 % shift
 set(handles.slider2, 'Value', .5); % centered
-dayRange = [start_day, end_day];
+timeRange = [start_time, end_time];
 
 % initialize module
 set(handles.pushbutton2,'Enable', 'off'); % undo
@@ -159,18 +163,18 @@ set(handles.pushbutton5,'Enable', 'off'); % finish set
 set(handles.slider2, 'Enable', 'on');
 set(handles.slider3, 'Enable', 'on');
 
-active = 0;
-
 % save variables in workspace
-assignin('base', 'active', active);
+assignin('base', 'active', 1);
 assignin('base', 'data', data);
-assignin('base', 'dayRange', dayRange);
+assignin('base', 'timeRange', timeRange);
 assignin('base', 'center', center);
 assignin('base', 'filename', item_selected);
 assignin('base', 'events', []);
 % Initialize cooking event array
-assignin('base', 'cooking_events', zeros(floor(length(data)/3), 3));
+assignin('base', 'cooking_events', zeros(floor(length(data)/5), 3));
+assignin('base', 'markers', cell(floor(length(data)/5), 5));
 assignin('base', 'number_of_events', 1);
+assignin('base', 'active', 1);
 %set(gcf, 'WindowButtonMotionFcn', @(object, eventdata) mouseMove(object, eventdata, handles))
 
 % Hints: contents = cellstr(get(hObject,'String')) returns listbox1 contents as cell array
@@ -189,16 +193,17 @@ end
 
 %if ~isequal(active, [])
 center = evalin('base', 'center');
-dayRange = evalin('base', 'dayRange');
+timeRange = evalin('base', 'timeRange');
 
+ylim manual;
 xlimits = get(handles.axes1, 'XLim');
 xmin = xlimits(1);
 xmax = xlimits(2);
-start_day = dayRange(1);
-end_day = dayRange(2);
+start_time = timeRange(1);
+end_time = timeRange(2);
 window_width = xmax - xmin;
 slider_position = get(hObject, 'Value');
-center = start_day + (end_day - start_day) * slider_position; % day to center at
+center = start_time + (end_time - start_time) * slider_position; % day to center at
 set(handles.axes1, 'XLim', [center - window_width/2, center + window_width / 2]);
 
 % update center of window
@@ -210,7 +215,7 @@ assignin('base', 'center', center);
 % if center + window_width/2 > xmax
 %     center = xmax - window_width/2
 % end
-% if (center) >= dayRange(1) && (center <= dayRange(2))
+% if (center) >= timeRange(1) && (center <= timeRange(2))
 %     set(handles.axes1, 'XLim', [center - window_width/2, center + window_width / 2]);
 % else
 %     set(hObject, 'Value', (center - xmin) / window_width); % don't move slider if no window shift
@@ -231,9 +236,10 @@ if ~isActive()
     return
 end
 
+ylim manual;
 center = evalin('base', 'center');
-dayRange = evalin('base', 'dayRange');
-numDays = dayRange(2) - dayRange(1);
+timeRange = evalin('base', 'timeRange');
+numDays = timeRange(2) - timeRange(1);
 
 slider_position = get(hObject, 'Value');
 scale_fac = 2 ^ (5 * slider_position);
@@ -272,63 +278,28 @@ function pushbutton2_Callback(hObject, eventdata, handles)
 % hObject    handle to pushbutton2 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-current_event = evalin('base', 'current_event');
-cel = evalin('base', 'cel');
 
-% last line = end of cooking event
-if current_event(3) ~= -1
-    current_event(3) = -1;
-    delete(cel(5));
-    delete(cel(4));
-    set(handles.pushbutton4, 'Enable', 'off'); % disable 'add to target set'
-% last line = end of lighting event
-elseif current_event(2) ~= -1
-    current_event(2) = -1;
-    delete(cel(3));
-    delete(cel(2));
-% last line = start of lighting
-elseif current_event(1) ~= -1
-    current_event(1) = -1;
-    delete(cel(1));
-    set(handles.pushbutton2, 'Enable', 'off'); % disable undo.
+n = evalin('base', 'number_of_events');
+active = evalin('base', 'active');
+events = evalin('base', 'cooking_events');
+markers = evalin('base', 'markers');
+
+[n, active] = step_backward_event_location(n, active);
+
+% remove last event entry and delete marker lines
+if active == 2 || active == 3
+    events(n, active) = 0;
+    delete(markers{n, active*2-1});
+    delete(markers{n, active*2-2});
+elseif active == 1
+    events(n, active) = 0;
+    delete(markers{n, 1});
 end
 
-assignin('base', 'current_event', current_event);
-assignin('base', 'cel', cel);
-
-
-%pushbutton4: add event to target set
-% --- Executes on button press in pushbutton4.
-function pushbutton4_Callback(hObject, eventdata, handles)
-% hObject    handle to pushbutton4 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% active = evalin('base', 'active');
-% if ~active
-%     return
-% end
-
-events = evalin('base', 'events');
-current_event = evalin('base', 'current_event');
-
-%choice = questdlg('Are you want to add this event? Once added, it cannot be removed.', 'Yes');
-% switch choice
-%     case 'Yes'
-        if isequal(events, [])
-            events = current_event;
-            set(handles.pushbutton5, 'Enable', 'on'); % complete set
-        else
-            events = vertcat(events, current_event);
-        end
-        
-active = 0;
+assignin('base', 'cooking_events', events);
 assignin('base', 'active', active);
-assignin('base', 'events', events);
-assignin('base', 'current_event', [-1, -1, -1]);
-set(hObject, 'Enable', 'off');
-% end
-        
+assignin('base', 'markers', markers);
+assignin('base', 'number_of_events', n);
 
 % save target set
 % --- Executes on button press in pushbutton5.
@@ -340,7 +311,7 @@ function pushbutton5_Callback(hObject, eventdata, handles)
 filename = evalin('base', 'filename');
 events = evalin('base', 'events');
 data = evalin('base', 'data');
-dayRange = evalin('base', 'dayRange');
+timeRange = evalin('base', 'timeRange');
 
 choice = questdlg('Are you are finished? Once you save, you cannot add to or edit this target set.', 'Complete Target Set', 'Yes', 'No', 'Yes');
 switch choice
@@ -349,14 +320,13 @@ switch choice
         name = name_cell{:};
         
         set = compile_training_set(data, events);
-        start_day = dayRange(1);
-        end_day = dayRange(2);
+        start_day = timeRange(1)+1;
+        end_day = timeRange(2);
         save(strcat(name, '.mat'), 'set' , 'filename', 'start_day', 'end_day');
         evalin('base', 'clear');
     case 'No'
         
 end
-
 
 % --- Executes on mouse press over axes background.
 function axes1_ButtonDownFcn(hObject, eventdata, handles)

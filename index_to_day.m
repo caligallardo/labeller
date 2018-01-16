@@ -1,9 +1,9 @@
-function day = index_to_day(index, handles)
+function day = index_to_day(index)
 
-dayRange = evalin('base', 'dayRange');
+timeRange = evalin('base', 'timeRange');
 data = evalin('base', 'data');
 
-start_day = dayRange(1);
-end_day = dayRange(2);
+start_day = timeRange(1);
+end_day = timeRange(2);
 
-day = index * (end_day - start_day)/length(data) + start_day;
+day = index * (end_day - start_day)/length(data) + (start_day);

@@ -15,7 +15,7 @@ if ~isempty(data) && inBounds(handles); % if dataset chosen and cursor in axes
     Xloc = C(1, 1);
     index = day_to_index(Xloc, handles);
     if ~isempty(current_event)
-        active
+        active;
         disp(current_event);
     end
     disp(data(index));
