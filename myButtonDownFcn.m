@@ -36,7 +36,7 @@ active = evalin('base', 'active');
             events(n, 1) = index;
             
             % update status
-            [n, active] = step_forward_event_location(n, active);
+            [n, active] = step_forward_event_location(n, active, handles);
             
             set(handles.pushbutton2, 'Enable', 'on'); % enable undo % MOVE THIS
 
@@ -56,7 +56,7 @@ active = evalin('base', 'active');
             markers{n, 3} = yellow_marker;
             
             % update status
-            [n, active] = step_forward_event_location(n, active);
+            [n, active] = step_forward_event_location(n, active, handles);
 
         % third line
         elseif active == 3 && index > events(n, 2)
@@ -73,7 +73,7 @@ active = evalin('base', 'active');
             markers{n, 4} = green_marker;
             markers{n, 5} = blue_marker;
             % update status
-            [n, active] = step_forward_event_location(n, active);
+            [n, active] = step_forward_event_location(n, active, handles);
 
         end
         

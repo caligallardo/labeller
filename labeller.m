@@ -284,7 +284,7 @@ active = evalin('base', 'active');
 events = evalin('base', 'cooking_events');
 markers = evalin('base', 'markers');
 
-[n, active] = step_backward_event_location(n, active);
+[n, active] = step_backward_event_location(n, active, handles);
 
 % remove last event entry and delete marker lines
 if active == 2 || active == 3
@@ -309,7 +309,7 @@ function pushbutton5_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 filename = evalin('base', 'filename');
-events = evalin('base', 'events');
+events = evalin('base', 'cooking_events');
 data = evalin('base', 'data');
 timeRange = evalin('base', 'timeRange');
 

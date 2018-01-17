@@ -2,6 +2,7 @@ function [data, period] = load_SUM_labeller(filename, est_period)
 
 
 loading = waitbar(0, strcat('Loading ', filename));
+
 num = xlsread(filename);
 waitbar(.5);
 

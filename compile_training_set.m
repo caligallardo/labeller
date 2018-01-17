@@ -3,6 +3,9 @@ function training_set = compile_training_set(data, events)
 target = zeros(length(data), 2);
 [n, m] = size(events);
 for i = 1 : n
+    if events(i, 1) == 0
+        break
+    end
     % event(i, 1): lighting start index of event i
     target(events(i, 1):(events(i, 2) - 1), 1) = 1;
     target(events(i, 1):(events(i, 2) - 1), 2) = 0;
