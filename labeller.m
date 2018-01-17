@@ -115,7 +115,9 @@ if isActive()
     end
 end
 
-[all_data, period] = load_SUM_labeller(item_selected, 4.8);
+all_data_with_time = load_SUM_labeller_from_txt(item_selected);
+all_data = all_data_with_time(:, 2);
+period = .5;
 total_days = length(all_data) * period / 60 / 24;
 
 % use dialog boxes to get day range, then load file
@@ -318,11 +320,10 @@ switch choice
     case 'Yes'
         name_cell = inputdlg('Please enter a name for this training set.');
         name = name_cell{:};
-        
+        filename = strcat(name, '.txt');
         set = compile_training_set(data, events);
-        start_day = timeRange(1)+1;
-        end_day = timeRange(2);
-        save(strcat(name, '.mat'), 'set' , 'filename', 'start_day', 'end_day');
+
+        dlmwrite(filename,set,',')
         evalin('base', 'clear');
     case 'No'
         

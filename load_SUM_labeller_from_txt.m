@@ -9,7 +9,8 @@ T = readtable(filename);
 
 tt = T(:, {'Time', 'SUMTemp'});
 
-data = table2array(tt);
+data_with_nan = table2array(tt);
+data = removeNaN(data_with_nan, 2);
 
 waitbar(1);
 close(loading);
