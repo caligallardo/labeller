@@ -1,5 +1,5 @@
 function training_set = compile_training_set(data, events)
-
+events
 target = zeros(length(data), 2);
 [n, m] = size(events);
 for i = 1 : n
