@@ -44,11 +44,17 @@ end
 
 % shift1 to find lighting start
 % shift1 * 2 = shift in minutes
-shift1 = 120; % 60 minutes
+shift1 = 40;
 % thresh1 = 4;
 % shift2 = 60; % 30 minutes
 % thresh2 = 2;
+lightShift = 60
 shiftAhead = difference(data, shift1);
+lightShift1 = difference(data, lightShift);
+lightShift2 = difference(lightShift1, lightShift);
+lightShiftB = vertcat(zeros(lightShift, 1), lightShift1);
+n2 = length(lightShift2);
+lightValues = (lightShift2 .* lightShift1(1:n2)) ./ (abs(lightShiftB(1:n2))+.02) ./ (data(1:n2) - min(data) + 1);
 
 figure()
 plot(data)
@@ -83,9 +89,11 @@ for dayNum = 1:length(dayBreaks)-1
         % lighting
         if i > 1
             prevEnd = eventEnd; % careful here. eventEnd cannot be changed in prev. iteration
-            lighting_i = prevEnd + index_of_max(shiftAhead(prevEnd:peakLoc));
+            %lighting_i = prevEnd + index_of_max(shiftAhead(prevEnd:peakLoc));
+            lighting_i = prevEnd + index_of_max(lightValues(prevEnd:peakLoc));
         else
-            lighting_i = start_i + index_of_max(shiftAhead(start_i:peakLoc));
+            %lighting_i = start_i + index_of_max(shiftAhead(start_i:peakLoc));
+            lighting_i = start_i-30 + index_of_max(lightValues(start_i-30:peakLoc));
         end
         
         % cooling
@@ -95,7 +103,7 @@ for dayNum = 1:length(dayBreaks)-1
         else
             [b, e] = getLongestZeroRegion(isIncreasing)
         end
-        eventEnd = peakLoc + round((b+e)/2)
+        eventEnd = peakLoc + b
         
         % add to table
         s.eventTable{eventNum, 'Peak_Location'} = peakLoc;
