@@ -21,7 +21,7 @@ assignin('base', 'durationInDays', durationInDays);
     'MinPeakProminence', 8, ...
     'MinPeakHeight', 35, ...
     'MinPeakDistance', 360, ...
-    'MinPeakWidth', 40)
+    'MinPeakWidth', 10)
 assignin('base', 'pks', pks);
 assignin('base', 'locs', locs);
 
@@ -45,6 +45,7 @@ end
 % shift1 to find lighting start
 % shift1 * 2 = shift in minutes
 shift1 = 40;
+shift2 = 120;
 % thresh1 = 4;
 % shift2 = 60; % 30 minutes
 % thresh2 = 2;
@@ -55,6 +56,12 @@ lightShift2 = difference(lightShift1, lightShift);
 lightShiftB = vertcat(zeros(lightShift, 1), lightShift1);
 n2 = length(lightShift2);
 lightValues = (lightShift2 .* lightShift1(1:n2)) ./ (abs(lightShiftB(1:n2))+.02) ./ (data(1:n2) - min(data) + 1);
+
+smooth = 0;
+shiftAhead2 = difference(data, shift2);
+
+smooth = 120;
+shiftAhead2smooth = difference(fastsmooth(data, smooth), shift2);
 
 figure()
 plot(data)
@@ -96,8 +103,10 @@ for dayNum = 1:length(dayBreaks)-1
             lighting_i = start_i-30 + index_of_max(lightValues(start_i-30:peakLoc));
         end
         
-        % cooling
-        isIncreasing = shiftAhead(peakLoc:end_i) > 0;
+        % cooling. finding longest region of continuous temp decline before
+        % next event
+        isIncreasing = shiftAhead2smooth(peakLoc:end_i) >= 0;
+        
         if i < numEventsToday
             [b, e] = getLongestZeroRegion(isIncreasing(1:listOfPeakLocationsThisDay(i+1)-peakLoc))
         else
@@ -129,5 +138,5 @@ end
         hold on
         scatter(a(i,3), data(a(i,3)), 'red', 'Marker', 'x')
     end
-
+title(strcat(filename, '1:', num2str(shift1), ', 2:', num2str(shift2), ', smooth:', num2str(smooth)))
 end

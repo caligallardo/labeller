@@ -1,3 +1,13 @@
+% produce table T:
+% % 
+%               Duration_In_Days | Number_Of_Uses
+% '101combined'         -                -
+% '102combined'         -                -
+%        .             ...              ...
+%        .
+%        .
+%
+
 filenames = {
     '101combined.txt', ...
     '102combined.txt', ...
