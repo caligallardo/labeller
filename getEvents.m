@@ -44,23 +44,18 @@ end
 
 % shift1 to find lighting start
 % shift1 * 2 = shift in minutes
-shift1 = 40;
+shift1 = 20;
 shift2 = 120;
-% thresh1 = 4;
-% shift2 = 60; % 30 minutes
-% thresh2 = 2;
-lightShift = 60
-shiftAhead = difference(data, shift1);
-lightShift1 = difference(data, lightShift);
-lightShift2 = difference(lightShift1, lightShift);
-lightShiftB = vertcat(zeros(lightShift, 1), lightShift1);
-n2 = length(lightShift2);
-lightValues = (lightShift2 .* lightShift1(1:n2)) ./ (abs(lightShiftB(1:n2))+.02) ./ (data(1:n2) - min(data) + 1);
+thetaX = 40;
 
-smooth = 0;
-shiftAhead2 = difference(data, shift2);
+thetas1 = atan(-difference(data, -thetaX));
+thetas2 = atan(difference(data, thetaX));
+% theta1 - theta2: sharpness (angle) of increase
+% divide by pi/2 - theta1 to favor changes that begin reltively flat
+lightValues = (thetas1+thetas2).*(pi/2-thetas1);
+%lightValues = diff(fastsmooth(diff(fastsmooth(data, 20)), 10));
 
-smooth = 120;
+smooth = 60;
 shiftAhead2smooth = difference(fastsmooth(data, smooth), shift2);
 
 figure()
@@ -90,17 +85,24 @@ for dayNum = 1:length(dayBreaks)-1
         peakLoc = listOfPeakLocationsThisDay(i)
         assignin('base', 'dayStart_i', start_i);
         assignin('base', 'dayEnd_i', end_i);
+        minDayTemp = min(data(start_i:end_i));
+        maxDayTemp = max(data(start_i:end_i));
+
         % get lighting point and ending range
         % get start and end pts for this event
         
         % lighting
         if i > 1
             prevEnd = eventEnd; % careful here. eventEnd cannot be changed in prev. iteration
-            %lighting_i = prevEnd + index_of_max(shiftAhead(prevEnd:peakLoc));
-            lighting_i = prevEnd + index_of_max(lightValues(prevEnd:peakLoc));
+            % proportional distance from daily max rel to daily min,
+            % squared.
+            % higher weight is placed on changes that occur at temps
+            % low in relation to daily hi and lo
+            relDistFromPeakTemp = ((maxDayTemp - data(prevEnd:peakLoc))/(maxDayTemp - minDayTemp)).^2;
+            lighting_i = prevEnd + index_of_max(lightValues(prevEnd:peakLoc) .* relDistFromPeakTemp);
         else
-            %lighting_i = start_i + index_of_max(shiftAhead(start_i:peakLoc));
-            lighting_i = start_i-30 + index_of_max(lightValues(start_i-30:peakLoc));
+            relDistFromPeakTemp = ((maxDayTemp - data(start_i-30:peakLoc))/(maxDayTemp - minDayTemp)).^2;
+            lighting_i = start_i-30 + index_of_max(lightValues(start_i-30:peakLoc) .* relDistFromPeakTemp);
         end
         
         % cooling. finding longest region of continuous temp decline before
