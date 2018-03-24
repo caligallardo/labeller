@@ -46,10 +46,10 @@ end
 % shift1 * 2 = shift in minutes
 shift1 = 20;
 shift2 = 120;
-thetaX = 40;
+thetaX = 60;
 
-thetas1 = atan(-difference(data, -thetaX));
-thetas2 = atan(difference(data, thetaX));
+thetas1 = atan(-difference(data, -thetaX)/.1); % divide by .1 for horizontal compression
+thetas2 = atan(difference(data, thetaX)/.1);1
 % theta1 - theta2: sharpness (angle) of increase
 % divide by pi/2 - theta1 to favor changes that begin reltively flat
 lightValues = (thetas1+thetas2).*(pi/2-thetas1);
@@ -140,5 +140,6 @@ end
         hold on
         scatter(a(i,3), data(a(i,3)), 'red', 'Marker', 'x')
     end
+%plot(lightValues + 30)
 title(strcat(filename, '1:', num2str(shift1), ', 2:', num2str(shift2), ', smooth:', num2str(smooth)))
 end
