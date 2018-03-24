@@ -18,7 +18,7 @@ assignin('base', 'durationInDays', durationInDays);
 
 % get peaks
 [pks, locs] = findpeaks(data, ...
-    'MinPeakProminence', 8, ...
+    'MinPeakProminence', 7, ...
     'MinPeakHeight', 35, ...
     'MinPeakDistance', 360, ...
     'MinPeakWidth', 10)
@@ -44,19 +44,18 @@ end
 
 % shift1 to find lighting start
 % shift1 * 2 = shift in minutes
-shift1 = 20;
-shift2 = 120;
+shiftEnd = 180;
 thetaX = 60;
 
 thetas1 = atan(-difference(data, -thetaX)/.1); % divide by .1 for horizontal compression
-thetas2 = atan(difference(data, thetaX)/.1);1
+thetas2 = atan(difference(data, thetaX)/.1);
 % theta1 - theta2: sharpness (angle) of increase
 % divide by pi/2 - theta1 to favor changes that begin reltively flat
 lightValues = (thetas1+thetas2).*(pi/2-thetas1);
 %lightValues = diff(fastsmooth(diff(fastsmooth(data, 20)), 10));
 
 smooth = 60;
-shiftAhead2smooth = difference(fastsmooth(data, smooth), shift2);
+%shiftAhead2smooth = difference(fastsmooth(data, smooth), shift2);
 
 figure()
 plot(data)
@@ -107,14 +106,30 @@ for dayNum = 1:length(dayBreaks)-1
         
         % cooling. finding longest region of continuous temp decline before
         % next event
-        isIncreasing = shiftAhead2smooth(peakLoc:end_i) >= 0;
+        %isIncreasing = shiftAhead2smooth(peakLoc:end_i) >= 0;
         
-        if i < numEventsToday
-            [b, e] = getLongestZeroRegion(isIncreasing(1:listOfPeakLocationsThisDay(i+1)-peakLoc))
-        else
-            [b, e] = getLongestZeroRegion(isIncreasing)
+        if i < numEventsToday % limit search upper bound by next event pk
+            [mPks, mLocs] = findpeaks(data(peakLoc:listOfPeakLocationsThisDay(i+1)), 'MinPeakProminence', .5);
+            
+        else % limit upper bound by next day start
+            %[b, e] = getLongestZeroRegion(isIncreasing)
+            [mPks, mLocs] = findpeaks(data(peakLoc:end_i), 'MinPeakProminence', .5);
         end
-        eventEnd = peakLoc + b
+        
+        lookAhead = data(peakLoc + mLocs) - data(peakLoc + mLocs + shiftEnd)
+        iOM = index_of_max(lookAhead);
+        mainPeakDiff = data(peakLoc)-data(peakLoc+shiftEnd)
+        if iOM > 0
+            if mainPeakDiff > lookAhead(iOM)
+                mostProbablePeakInd = 0;
+            else
+                mostProbablePeakInd = mLocs(iOM);
+            end
+        else
+            mostProbablePeakInd = 0;
+        end
+        
+        eventEnd = peakLoc + mostProbablePeakInd;
         
         % add to table
         s.eventTable{eventNum, 'Peak_Location'} = peakLoc;
@@ -141,5 +156,5 @@ end
         scatter(a(i,3), data(a(i,3)), 'red', 'Marker', 'x')
     end
 %plot(lightValues + 30)
-title(strcat(filename, '1:', num2str(shift1), ', 2:', num2str(shift2), ', smooth:', num2str(smooth)))
+%title(strcat(filename, '1:', num2str(shift1), ', 2:', num2str(shift2), ', smooth:', num2str(smooth)))
 end
