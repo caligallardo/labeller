@@ -30,7 +30,7 @@ A = horzcat(locs, zeros(numPeaks, 2));
 s.eventTable = array2table(A, 'VariableNames', {'Peak_Location', 'Start_Time', 'End_Time'});
 
 % day daily lows by index
-[neg_neg_pks, dayBreaks] = findpeaks(data * -1, 'MinPeakDistance', .85 * 2 * 60 * 24, 'MinPeakProminence', 1.2, 'MinPeakHeight', -35);
+[neg_neg_pks, dayBreaks] = findpeaks(data * -1, 'MinPeakDistance', .85 * 2 * 60 * 24, 'MinPeakProminence', 1, 'MinPeakHeight', -35);
 neg_pks = neg_neg_pks * -1;
 assignin('base', 'dayBreaks', dayBreaks);
 
@@ -157,4 +157,11 @@ end
     end
 %plot(lightValues + 30)
 %title(strcat(filename, '1:', num2str(shift1), ', 2:', num2str(shift2), ', smooth:', num2str(smooth)))
+
+[numEvents, c] = size(a);
+durations = a(:, 3) - a(:, 2);
+sumArray = [numEvents, mean(durations)/2, durationInDays];
+
+s.summaryTable = array2table(sumArray, 'VariableNames', {'Number_Of_Events', 'Average_Duration_in_Min', 'Number_Of_Days'});
+
 end
