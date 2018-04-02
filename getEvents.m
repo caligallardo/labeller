@@ -1,4 +1,4 @@
-function s = getEvents(filename)
+function s = getEvents(filename, nameForTextFile)
 
 % get data from .txt file, as arrays
 dataWithEpoch = load_SUM_labeller_from_txt(filename);
@@ -54,7 +54,7 @@ thetas2 = atan(difference(data, thetaX)/.1);
 lightValues = (thetas1+thetas2).*(pi/2-thetas1);
 %lightValues = diff(fastsmooth(diff(fastsmooth(data, 20)), 10));
 
-smooth = 60;
+%smooth = 60;
 %shiftAhead2smooth = difference(fastsmooth(data, smooth), shift2);
 
 figure()
@@ -163,5 +163,19 @@ durations = a(:, 3) - a(:, 2);
 sumArray = [numEvents, mean(durations)/2, durationInDays];
 
 s.summaryTable = array2table(sumArray, 'VariableNames', {'Number_Of_Events', 'Average_Duration_in_Min', 'Number_Of_Days'});
+
+
+if nargin == 2,
+    precision = ceil(log(epochTimestamps(1)));
+    binArray = horzcat(time + epochTimestamps(1), zeros(length(data), 1));
+    n = size(a, 1);
+    for i = 1 : n
+        if a(i, 1) == 0
+            break
+        end
+        binArray(a(i, 2):a(i, 3), 2) = 1;
+    end
+    dlmwrite(nameForTextFile, binArray, 'precision', precision);
+end
 
 end
