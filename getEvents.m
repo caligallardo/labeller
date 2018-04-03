@@ -1,5 +1,8 @@
 function s = getEvents(filename, nameForTextFile)
 
+shiftEnd = 180;
+thetaX = 60;
+
 % get data from .txt file, as arrays
 dataWithEpoch = load_SUM_labeller_from_txt(filename);
 epochTimestamps = dataWithEpoch(:, 1);
@@ -17,7 +20,7 @@ durationInDays = durationInSeconds / (60*60*24)
 assignin('base', 'durationInDays', durationInDays);
 
 % get peaks
-[pks, locs] = findpeaks(data, ...
+[pks, locs] = findpeaks(data(1:length(data)-shiftEnd), ...
     'MinPeakProminence', 7, ...
     'MinPeakHeight', 35, ...
     'MinPeakDistance', 360, ...
@@ -42,11 +45,6 @@ if daysByPks > durationInDays * 1.2 || daysByPks < .8 * durationInDays
     throw(MException(msgId, msg))
 end
 
-% shift1 to find lighting start
-% shift1 * 2 = shift in minutes
-shiftEnd = 180;
-thetaX = 60;
-
 thetas1 = atan(-difference(data, -thetaX)/.1); % divide by .1 for horizontal compression
 thetas2 = atan(difference(data, thetaX)/.1);
 % theta1 - theta2: sharpness (angle) of increase
@@ -66,9 +64,9 @@ scatter(locs, pks)
 
 eventNum = 1;
 
-for dayNum = 1:length(dayBreaks)-1
+for dayNum = 1:length(dayBreaks)
     start_i = dayBreaks(dayNum)
-    end_i = dayBreaks(dayNum+1)
+    if dayNum == length(dayBreaks), end_i = length(data);    else end_i = dayBreaks(dayNum+1); end
     % get events that occur on or after beginning of the day. ith value is
     % index wrt locs
     isToday_locs = (locs > start_i & locs < end_i);
@@ -109,8 +107,9 @@ for dayNum = 1:length(dayBreaks)-1
         %isIncreasing = shiftAhead2smooth(peakLoc:end_i) >= 0;
         
         if i < numEventsToday % limit search upper bound by next event pk
-            [mPks, mLocs] = findpeaks(data(peakLoc:listOfPeakLocationsThisDay(i+1)), 'MinPeakProminence', .5);
-            
+            [mPks, mLocs] = findpeaks(data(peakLoc:listOfPeakLocationsThisDay(i+1)), 'MinPeakProminence', .5)
+        elseif end_i == length(data) % limit by end of data set
+            [mPks, mLocs] = findpeaks(data(peakLoc:end_i-shiftEnd), 'MinPeakProminence', .5);
         else % limit upper bound by next day start
             %[b, e] = getLongestZeroRegion(isIncreasing)
             [mPks, mLocs] = findpeaks(data(peakLoc:end_i), 'MinPeakProminence', .5);
@@ -140,25 +139,29 @@ for dayNum = 1:length(dayBreaks)-1
     end
 end
 
-    a = table2array(s.eventTable)
-    n = length(pks);
-    if locs(length(locs)) > dayBreaks(length(dayBreaks))
-        n = length(pks)-1
-        a = a(1:n, :)
+a = table2array(s.eventTable)
+aHeightRaw = size(a, 1);
+for row = 1:aHeightRaw
+    if a(row, 3) == 0
+        a = a(1:row-1, :)
+        break
     end
-    
-    for i = 1:n
-        hold on
-        plot(a(i,2):a(i,3), data(a(i,2):a(i,3)), 'Color', [.5, 0, .5])
-        hold on
-        scatter(a(i,2), data(a(i,2)), 'green', 'Marker', 'x')
-        hold on
-        scatter(a(i,3), data(a(i,3)), 'red', 'Marker', 'x')
-    end
+end
+
+n = size(a, 1);
+
+for i = 1:n
+    hold on
+    plot(a(i,2):a(i,3), data(a(i,2):a(i,3)), 'Color', [.5, 0, .5])
+    hold on
+    scatter(a(i,2), data(a(i,2)), 'green', 'Marker', 'x')
+    hold on
+    scatter(a(i,3), data(a(i,3)), 'red', 'Marker', 'x')
+end
 %plot(lightValues + 30)
 %title(strcat(filename, '1:', num2str(shift1), ', 2:', num2str(shift2), ', smooth:', num2str(smooth)))
 
-[numEvents, c] = size(a);
+[numEvents, c] = size(a)
 durations = a(:, 3) - a(:, 2);
 sumArray = [numEvents, mean(durations)/2, durationInDays];
 
