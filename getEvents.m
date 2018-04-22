@@ -1,26 +1,58 @@
 function s = getEvents(filename, nameForTextFile)
 
+    function dayNum = isDay(timeFromStart) % time in seconds
+        dayNum = floor(timeFromStart / (60 * 60 * 24);
+    end
+
 shiftEnd = 180;
 thetaX = 60;
+secondsPerDay = 60 * 60 * 24;
+period = 30;
+f_day = secondsPerDay / period;
 
 % get data from .txt file, as arrays
-dataWithEpoch = load_SUM_labeller_from_txt(filename);
-epochTimestamps = dataWithEpoch(:, 1);
-timeFromStart = epochTimestamps - epochTimestamps(1);
-tempReadings = dataWithEpoch(:, 2);
+rawDataWithEpoch = load_SUM_labeller_from_txt(filename);
+epochTimestamps = rawDataWithEpoch(:, 1);
+timeSinceActivation = epochTimestamps - epochTimestamps(1);
+tempReadings = rawDataWithEpoch(:, 2);
 assignin('base', 'tempReadings', tempReadings);
 
-% interpolate temperature "data" every 30 sec
-time = transpose(0:30:timeFromStart(length(timeFromStart)));
-data = interp1q(timeFromStart, tempReadings, time);
-assignin('base', 'data', data);
+%epochActivationDayIST = floor(epochTimeStamps(1) / (60 * 60 * 24) + 5.5 * 60 * 60);
 
-durationInSeconds = dataWithEpoch(length(dataWithEpoch)) - dataWithEpoch(1);
-durationInDays = durationInSeconds / (60*60*24)
-assignin('base', 'durationInDays', durationInDays);
+% unless specified as epoch, time is measured in seconds since activation.
+% 'real time' is based on actual timestamp values
+
+% interpolate temperature "data" every 30 sec
+interpTime = (30 * ceil(timeSinceActivation(1)/period)) : period : (period * floor(timeSinceActivation(end)/30));
+interpData = interp1q(timeSinceActivation, tempReadings, interpTime);
+
+% % desired time vector: 
+% % (midnight on first whole day):(30 seconds):(end of last whole day)
+interpTimeSinceMidnight = mod(interpTime + 60 * 60 * 5.5, secondsPerDay);
+firstMidnightInterpIndex = find(interpTimeSinceMidnight == 0, 1);
+lastMidnightInterpIndex = find(interTimesSinceMidnight == 0, 1, 'last');
+time = interpTime(firstMidnightInterpIndex : (lastMidnightInterpIndex-1));
+data = interpData(firstMidnightInterpIndex : (lastMidnightInterpIndex-1));
+numDays = (lastMidnightInterpIndex - firstMidnightInterpIndex) / f_day;
+
+% timeSinceMidnight = mod(timeSinceActivation + 60 * 60 * 5.5, 60 * 60 * 24); % epoch time begins at 5:30am IST
+% 
+% firstInRangeRealTimeIndex = find(timeSinceMidnight(2:end) <= timeSinceMidnight(1)) + 1;
+% firstInRangeRealTime = timeSinceActivation(firstInRangeRealTimeIndex);
+% lastInRangeRealTimeIndex = find(timeSinceMidnight(1:end-1) <= timeSinceMidnight(end), 'last');
+% lastInRangeRealTime = timeSinceActivation(lastInRangeRealTimeIndex);
+% 
+% rangeStart = firstInRangeRealTime - timeSinceMidnight(firstInRangeRealTimeIndex);
+% rangeEnd = (lastInRangeRealTime - timeSinceMidnight(lastInRangeRealTimeIndex)) + 60 * 60 * 24;
+
+assignin('base', 'data', data);
+assignin('base', 'time', time);
+
+% from here, time is now in seconds since the start of the
+% first day. indices also measured by start of first day
 
 % get peaks
-[pks, locs] = findpeaks(data(1:length(data)-shiftEnd), ...
+[pks, locs] = findpeaks(data(1:length(dataUncut)-shiftEnd), ...
     'MinPeakProminence', 7, ...
     'MinPeakHeight', 35, ...
     'MinPeakDistance', 360, ...
@@ -28,45 +60,49 @@ assignin('base', 'durationInDays', durationInDays);
 assignin('base', 'pks', pks);
 assignin('base', 'locs', locs);
 
-numPeaks = length(pks);
-A = horzcat(locs, zeros(numPeaks, 2));
+firstEventInRange_LocIndex = find(locs >= firstDayStartIndex, 1);
+lastEventInRange_LocIndex = find(locs <= lastDayEndIndex, 1. 'last');
+
+% only events in complete days
+eventLocations = locs(firstEventInRange_LocIndex : lastEventInRange_LocIndex);
+peakValues = pks(firstEventInRange_LocIndex : lastEventInRange_LocIndex);
+
+numEvents = length(eventLocations);
+A = horzcat(locs, zeros(numEvents, 2));
 s.eventTable = array2table(A, 'VariableNames', {'Peak_Location', 'Start_Time', 'End_Time'});
 
-% day daily lows by index
-[neg_neg_pks, dayBreaks] = findpeaks(data * -1, 'MinPeakDistance', .85 * 2 * 60 * 24, 'MinPeakProminence', 1, 'MinPeakHeight', -35);
-neg_pks = neg_neg_pks * -1;
-assignin('base', 'dayBreaks', dayBreaks);
-
-% check that this was at least kind of accurate
-daysByPks = length(neg_pks)
-if daysByPks > durationInDays * 1.2 || daysByPks < .8 * durationInDays
-    msgId = 'getEvents: size discrepancy';
-    msg = 'days calculated by peak find varies significantly from actual duration in days';
-    throw(MException(msgId, msg))
-end
-
-thetas1 = atan(-difference(data, -thetaX)/.1); % divide by .1 for horizontal compression
-thetas2 = atan(difference(data, thetaX)/.1);
+thetas1 = atan(-difference(dataUncut, -thetaX)/.1); % divide by .1 for horizontal compression
+thetas2 = atan(difference(dataUncut, thetaX)/.1);
 % theta1 - theta2: sharpness (angle) of increase
 % divide by pi/2 - theta1 to favor changes that begin reltively flat
 lightValues = (thetas1+thetas2).*(pi/2-thetas1);
-%lightValues = diff(fastsmooth(diff(fastsmooth(data, 20)), 10));
-
-%smooth = 60;
-%shiftAhead2smooth = difference(fastsmooth(data, smooth), shift2);
 
 figure()
-plot(data)
+plot(dataUncut)
 hold on
 scatter(dayBreaks, neg_pks)
 hold on;
 scatter(locs, pks)
 
-eventNum = 1;
+dailyEventCounts = zeros(numDays, 1);
 
+for eventNum = 1:numEvents
+    peakLoc = eventLocations(eventNum);
+    dayNum = isDay(peakLoc * period);
+    if eventNum == 1
+        searchStartIndex = 1;
+    else
+        searchStartIndex = endOfLastEvent;
+    end
+    
+    minDayTemp = min(data(start_i:end_i));
+    maxDayTemp = max(dataUncut(start_i:end_i));
+    relDistFromPeakTemp = ((maxDayTemp - dataUncut(searchStart:peakLoc))/(maxDayTemp - minDayTemp)).^2;
+
+end
 for dayNum = 1:length(dayBreaks)
     start_i = dayBreaks(dayNum)
-    if dayNum == length(dayBreaks), end_i = length(data);    else end_i = dayBreaks(dayNum+1); end
+    if dayNum == length(dayBreaks), end_i = length(dataUncut);    else end_i = dayBreaks(dayNum+1); end
     % get events that occur on or after beginning of the day. ith value is
     % index wrt locs
     isToday_locs = (locs > start_i & locs < end_i);
@@ -82,8 +118,7 @@ for dayNum = 1:length(dayBreaks)
         peakLoc = listOfPeakLocationsThisDay(i)
         assignin('base', 'dayStart_i', start_i);
         assignin('base', 'dayEnd_i', end_i);
-        minDayTemp = min(data(start_i:end_i));
-        maxDayTemp = max(data(start_i:end_i));
+
 
         % get lighting point and ending range
         % get start and end pts for this event
@@ -95,10 +130,10 @@ for dayNum = 1:length(dayBreaks)
             % squared.
             % higher weight is placed on changes that occur at temps
             % low in relation to daily hi and lo
-            relDistFromPeakTemp = ((maxDayTemp - data(prevEnd:peakLoc))/(maxDayTemp - minDayTemp)).^2;
+            relDistFromPeakTemp = ((maxDayTemp - dataUncut(prevEnd:peakLoc))/(maxDayTemp - minDayTemp)).^2;
             lighting_i = prevEnd + index_of_max(lightValues(prevEnd:peakLoc) .* relDistFromPeakTemp);
         else
-            relDistFromPeakTemp = ((maxDayTemp - data(start_i-30:peakLoc))/(maxDayTemp - minDayTemp)).^2;
+            relDistFromPeakTemp = ((maxDayTemp - dataUncut(start_i-30:peakLoc))/(maxDayTemp - minDayTemp)).^2;
             lighting_i = start_i-30 + index_of_max(lightValues(start_i-30:peakLoc) .* relDistFromPeakTemp);
         end
         
@@ -107,17 +142,17 @@ for dayNum = 1:length(dayBreaks)
         %isIncreasing = shiftAhead2smooth(peakLoc:end_i) >= 0;
         
         if i < numEventsToday % limit search upper bound by next event pk
-            [mPks, mLocs] = findpeaks(data(peakLoc:listOfPeakLocationsThisDay(i+1)), 'MinPeakProminence', .5)
-        elseif end_i == length(data) % limit by end of data set
-            [mPks, mLocs] = findpeaks(data(peakLoc:end_i-shiftEnd), 'MinPeakProminence', .5);
+            [mPks, mLocs] = findpeaks(dataUncut(peakLoc:listOfPeakLocationsThisDay(i+1)), 'MinPeakProminence', .5)
+        elseif end_i == length(dataUncut) % limit by end of data set
+            [mPks, mLocs] = findpeaks(dataUncut(peakLoc:end_i-shiftEnd), 'MinPeakProminence', .5);
         else % limit upper bound by next day start
             %[b, e] = getLongestZeroRegion(isIncreasing)
-            [mPks, mLocs] = findpeaks(data(peakLoc:end_i), 'MinPeakProminence', .5);
+            [mPks, mLocs] = findpeaks(dataUncut(peakLoc:end_i), 'MinPeakProminence', .5);
         end
         
-        lookAhead = data(peakLoc + mLocs) - data(peakLoc + mLocs + shiftEnd)
+        lookAhead = dataUncut(peakLoc + mLocs) - dataUncut(peakLoc + mLocs + shiftEnd)
         iOM = index_of_max(lookAhead);
-        mainPeakDiff = data(peakLoc)-data(peakLoc+shiftEnd)
+        mainPeakDiff = dataUncut(peakLoc)-dataUncut(peakLoc+shiftEnd)
         if iOM > 0
             if mainPeakDiff > lookAhead(iOM)
                 mostProbablePeakInd = 0;
@@ -152,11 +187,11 @@ n = size(a, 1);
 
 for i = 1:n
     hold on
-    plot(a(i,2):a(i,3), data(a(i,2):a(i,3)), 'Color', [.5, 0, .5])
+    plot(a(i,2):a(i,3), dataUncut(a(i,2):a(i,3)), 'Color', [.5, 0, .5])
     hold on
-    scatter(a(i,2), data(a(i,2)), 'green', 'Marker', 'x')
+    scatter(a(i,2), dataUncut(a(i,2)), 'green', 'Marker', 'x')
     hold on
-    scatter(a(i,3), data(a(i,3)), 'red', 'Marker', 'x')
+    scatter(a(i,3), dataUncut(a(i,3)), 'red', 'Marker', 'x')
 end
 %plot(lightValues + 30)
 %title(strcat(filename, '1:', num2str(shift1), ', 2:', num2str(shift2), ', smooth:', num2str(smooth)))
@@ -170,7 +205,7 @@ s.summaryTable = array2table(sumArray, 'VariableNames', {'Number_Of_Events', 'Av
 
 if nargin == 2,
     precision = ceil(log(epochTimestamps(1)));
-    binArray = horzcat(time + epochTimestamps(1), zeros(length(data), 1));
+    binArray = horzcat(timeSinceActivation + epochTimestamps(1), zeros(length(dataUncut), 1));
     n = size(a, 1);
     for i = 1 : n
         if a(i, 1) == 0
