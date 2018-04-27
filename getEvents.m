@@ -26,9 +26,9 @@ interpData = interp1q(timeSinceActivation, tempReadings, interpTime);
 
 % get peaks
 [interpPks, interpLocs] = findpeaks(interpData(1:end-shiftEnd), ...
-    'MinPeakProminence', 7, ...
+    'MinPeakProminence', 6.5, ...
     'MinPeakHeight', 35, ...
-    'MinPeakDistance', 360, ...
+    'MinPeakDistance', 300, ...
     'MinPeakWidth', 10)
 assignin('base', 'pks', interpPks);
 assignin('base', 'locs', interpLocs);
@@ -82,35 +82,40 @@ for eventNum = 1:numEvents
     peakLoc = eventLocations(eventNum)
     peakValue = peakValues(eventNum);
     dayNum = isDay(peakLoc * period)
-    if eventNum == 1
-        searchStart = max(1, (dayNum-1) * f_day);
-    else
-        searchStart = endOfLastEvent;
+    searchStart = peakLoc - floor(f_day / 3)
+    if searchStart < 0
+        searchStart = 1;
     end
+    if eventNum ~= 1
+        searchStart = max(searchStart, endOfLastEvent)
+    end
+    
     today = data(f_day * floor(peakLoc/f_day)+1 : f_day * ceil(peakLoc/f_day));
     minDayTemp = min(today);
     maxDayTemp = max(today);
     
-    % proportional distance from daily max rel to daily min,
-    % squared.
+    % proportional distance from daily max rel to daily min, squared.
     % higher weight is placed on changes that occur at temps
     % low in relation to daily hi and lo
     relDistFromPeakTemp = ((maxDayTemp - data(searchStart:peakLoc))/(maxDayTemp - minDayTemp)).^2;
     lighting = searchStart + index_of_max(lightValues(searchStart:peakLoc) .* relDistFromPeakTemp);
 
-
-    
     % cooling. finding longest region of continuous temp decline before
     % next event
     %isIncreasing = shiftAhead2smooth(peakLoc:end_i) >= 0;
 
     if eventNum == numEvents
-        endSearch = length(data);
+        m = min(data(peakLoc:end));
+        endSearch = find(data(peakLoc:end)-m==0, 1) + peakLoc;
     else
-        nextDayStart=(dayNum + 1)*f_day
-        nextPeak = eventLocations(eventNum + 1)
-        endSearch = min(eventLocations((eventNum + 1)), (dayNum + 1)*f_day);
+        nextDayStart=(dayNum + 1)*f_day;
+        nextPeak = eventLocations(eventNum + 1);
+        upperSearchBound = min(eventLocations((eventNum + 1)), (dayNum + 1)*f_day);
+        m = min(data(peakLoc:upperSearchBound));
+        endSearch = find(data(peakLoc:upperSearchBound)-m==0, 1) + peakLoc;
+    end  
     [mPks, mLocs] = findpeaks(data(peakLoc:endSearch), 'MinPeakProminence', .5)
+    
     
     interpPkLoc = peakLoc + firstMidnightInterpIndex;
     lookAhead = interpData(interpPkLoc + mLocs) - interpData(interpPkLoc + mLocs + shiftEnd)
@@ -126,7 +131,7 @@ for eventNum = 1:numEvents
         mostProbablePeakInd = 0;
     end
         
-    eventEnd = peakLoc + mostProbablePeakInd;
+    eventEnd = peakLoc + mostProbablePeakInd
     endOfLastEvent = eventEnd;
     
     dailyEventCounts(dayNum) = dailyEventCounts(dayNum) + 1;
@@ -140,8 +145,8 @@ for eventNum = 1:numEvents
     s.eventTable{eventNum, 'Start_Time'} = lighting ;
     s.eventTable{eventNum, 'End_Time'} =  eventEnd;
     assignin('base', 'eventNum', eventNum);
-    end
 end
+
 
 a = table2array(s.eventTable)
 aHeightRaw = size(a, 1);
@@ -163,7 +168,9 @@ for i = 1:n
     scatter(a(i,3), interpData(a(i,3)), 'red', 'Marker', 'x')
 end
 
+% mark beginning and end of whole-day time period that was searched
 scatter(firstMidnightInterpIndex, interpData(firstMidnightInterpIndex), 'red', 'o');
+scatter(lastMidnightInterpIndex, interpData(lastMidnightInterpIndex), 'red', 'o');
 %plot(lightValues + 30)
 %title(strcat(filename, '1:', num2str(shift1), ', 2:', num2str(shift2), ', smooth:', num2str(smooth)))
 
