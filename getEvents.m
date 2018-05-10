@@ -10,6 +10,7 @@ secondsPerDay = 60 * 60 * 24;
 period = 30;
 f_day = secondsPerDay / period
 
+% dan added a comment practice
 % get data from .txt file, as arrays
 rawDataWithEpoch = load_SUM_labeller_from_txt(filename);
 epochTimestamps = rawDataWithEpoch(:, 1);
