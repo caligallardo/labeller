@@ -26,7 +26,7 @@ interpData = interp1q(timeSinceActivation, tempReadings, interpTime);
 
 % get peaks
 [interpPks, interpLocs] = findpeaks(interpData(1:end-shiftEnd), ...
-    'MinPeakProminence', 6.5, ...
+    'MinPeakProminence', 6, ...
     'MinPeakHeight', 35, ...
     'MinPeakDistance', 300, ...
     'MinPeakWidth', 10)
@@ -67,8 +67,8 @@ s.eventTable = array2table(A, 'VariableNames', {'Peak_Location', 'Start_Time', '
 thetas1 = atan(-difference(interpData, -thetaX)/.1); % divide by .1 for horizontal compression
 thetas2 = atan(difference(interpData, thetaX)/.1);
 % theta1 - theta2: sharpness (angle) of increase
-% divide by pi/2 - theta1 to favor changes that begin relatively flat
-interpLightValues = (thetas1+thetas2).*(pi/2-thetas1);
+% mult by pi/2 - theta1 to favor changes that begin relatively flat
+interpLightValues = (thetas1+thetas2).*(pi/2-abs(thetas1));
 lightValues = interpLightValues(firstMidnightInterpIndex : (lastMidnightInterpIndex-1));
 
 figure()
@@ -82,10 +82,12 @@ for eventNum = 1:numEvents
     peakLoc = eventLocations(eventNum)
     peakValue = peakValues(eventNum);
     dayNum = isDay(peakLoc * period)
+    % search within a third of a day before peak
     searchStart = peakLoc - floor(f_day / 3)
     if searchStart < 0
         searchStart = 1;
     end
+    % if another event ended more recently than day/3, start search then
     if eventNum ~= 1
         searchStart = max(searchStart, endOfLastEvent)
     end
@@ -104,12 +106,12 @@ for eventNum = 1:numEvents
     % next event
     %isIncreasing = shiftAhead2smooth(peakLoc:end_i) >= 0;
 
+    % end search at lowest point between this event and the next day or
+    % event
     if eventNum == numEvents
         m = min(data(peakLoc:end));
         endSearch = find(data(peakLoc:end)-m==0, 1) + peakLoc;
     else
-        nextDayStart=(dayNum + 1)*f_day;
-        nextPeak = eventLocations(eventNum + 1);
         upperSearchBound = min(eventLocations((eventNum + 1)), (dayNum + 1)*f_day);
         m = min(data(peakLoc:upperSearchBound));
         endSearch = find(data(peakLoc:upperSearchBound)-m==0, 1) + peakLoc;
@@ -180,7 +182,7 @@ sumArray = [numEvents, mean(durations)/2, numDays];
 
 s.summaryTable = array2table(sumArray, 'VariableNames', {'Number_Of_Events', 'Average_Duration_in_Min', 'Number_Of_Days'});
 
-
+% create text file
 if nargin == 2,
     precision = ceil(log(epochTimestamps(1)));
     binArray = horzcat(interpTime + epochTimestamps(1), zeros(length(interpData), 1));
